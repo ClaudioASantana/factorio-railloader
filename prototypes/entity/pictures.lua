@@ -10,33 +10,38 @@ local function flatten(ts)
   return out
 end
 
-local all_base_rail_pictures = rail_pictures()
+local base_straight_rail_pictures = data.raw["straight-rail"]["straight-rail"].pictures
 
 local function triple_rail_pictures(direction, layers)
+  local dir_key = (direction == "horizontal") and "east" or "north"
+  local rail_pics = base_straight_rail_pictures and base_straight_rail_pictures[dir_key]
   local out = {}
+  if not rail_pics then
+    return out
+  end
   for _, layer in ipairs(layers) do
-    local l = all_base_rail_pictures["straight_rail_" .. direction][layer]
-    for i=-1,1 do
-      local shift = { i * 2, 0 }
-      if direction == "vertical" then
-        shift = { 0, i * 2 }
-      end
+    local l = rail_pics[layer]
+    if l then
+      for i=-1,1 do
+        local shift = { i * 2, 0 }
+        if direction == "vertical" then
+          shift = { 0, i * 2 }
+        end
+        local l_shift = l.shift or {0, 0}
 
-      out[#out+1] = {
-        filename = l.filename,
-        width = l.width,
-        height = l.height,
-        frame_count = 1,
-        shift = shift,
-        hr_version = {
-          filename = l.hr_version.filename,
-          width = l.hr_version.width,
-          height = l.hr_version.height,
+        out[#out+1] = {
+          filename = l.filename,
+          width = l.width,
+          height = l.height,
+          x = l.x,
+          y = l.y,
           frame_count = 1,
-          shift = shift,
-          scale = 0.5,
+          shift = { l_shift[1] + shift[1], l_shift[2] + shift[2] },
+          scale = l.scale or 0.5,
+          priority = l.priority or "extra-high",
+          flags = l.flags,
         }
-      }
+      end
     end
   end
   return out
@@ -45,92 +50,59 @@ end
 local all_layers = {"stone_path_background", "stone_path", "ties", "backplates", "metals"}
 local rail_only_layers = {"backplates", "metals"}
 
-local wheels_layer = data.raw["cargo-wagon"]["cargo-wagon"].wheels
-local wagon_layer = data.raw["cargo-wagon"]["cargo-wagon"].pictures.layers[1]
+local cargo_wagon = data.raw["cargo-wagon"]["cargo-wagon"]
+local wheels_layer = cargo_wagon.wheels and (cargo_wagon.wheels.rotated or cargo_wagon.wheels)
+local wagon_layer = cargo_wagon.pictures and (
+  (cargo_wagon.pictures.rotated and cargo_wagon.pictures.rotated.layers and cargo_wagon.pictures.rotated.layers[1])
+  or (cargo_wagon.pictures.layers and cargo_wagon.pictures.layers[1])
+)
+
 local cargo_wagon_layers = {
   horizontal = {
     -- left wheel
     {
-      filename = wheels_layer.filenames[1],
+      filename = wheels_layer.filenames and wheels_layer.filenames[3] or wheels_layer.filename,
       width = wheels_layer.width,
       height = wheels_layer.height,
-      y = wheels_layer.height * 8,
       frame_count = 1,
       shift = {-2, -0.25},
-      hr_version = {
-        filename = wheels_layer.hr_version.filenames[3],
-        width = wheels_layer.hr_version.width,
-        height = wheels_layer.hr_version.height,
-        frame_count = 1,
-        shift = {-2, -0.25},
-        scale = 0.5,
-      },
+      scale = wheels_layer.scale or 0.5,
     },
     -- right wheel
     {
-      filename = wheels_layer.filenames[2],
+      filename = wheels_layer.filenames and wheels_layer.filenames[7] or wheels_layer.filename,
       width = wheels_layer.width,
       height = wheels_layer.height,
-      y = wheels_layer.height * 8,
       frame_count = 1,
       shift = {2, -0.25},
-      hr_version = {
-        filename = wheels_layer.hr_version.filenames[7],
-        width = wheels_layer.hr_version.width,
-        height = wheels_layer.hr_version.height,
-        frame_count = 1,
-        shift = {2, -0.25},
-        scale = 0.5,
-      },
+      scale = wheels_layer.scale or 0.5,
     },
     -- wagon body
     {
-      filename = wagon_layer.filenames[3],
+      filename = wagon_layer.filenames and wagon_layer.filenames[3] or wagon_layer.filename,
       width = wagon_layer.width,
       height = wagon_layer.height,
       frame_count = 1,
-      shift = wagon_layer.shift,
-      hr_version = {
-        filename = wagon_layer.hr_version.filenames[3],
-        height = wagon_layer.hr_version.height,
-        width = wagon_layer.hr_version.width,
-        frame_count = 1,
-        shift = wagon_layer.shift,
-        scale = 0.5,
-      }
+      shift = wagon_layer.shift or {0, -25/32},
+      scale = wagon_layer.scale or 0.5,
     },
   },
   vertical = {
     {
-      filename = wheels_layer.filenames[1],
+      filename = wheels_layer.filenames and wheels_layer.filenames[1] or wheels_layer.filename,
       width = wheels_layer.width,
       height = wheels_layer.height,
-      y = 0,
       frame_count = 1,
       shift = {0, 2.5},
-      hr_version = {
-        filename = wheels_layer.hr_version.filenames[1],
-        width = wheels_layer.hr_version.width,
-        height = wheels_layer.hr_version.height,
-        frame_count = 1,
-        shift = {0, 2.5},
-        scale = 0.5,
-      },
+      scale = wheels_layer.scale or 0.5,
     },
     {
-      filename = wagon_layer.filenames[1],
+      filename = wagon_layer.filenames and wagon_layer.filenames[1] or wagon_layer.filename,
       width = wagon_layer.width,
       height = wagon_layer.height,
       frame_count = 1,
       shift = {0, 0},
-      hr_version = {
-        filename = wagon_layer.hr_version.filenames[1],
-        height = wagon_layer.hr_version.height,
-        width = wagon_layer.hr_version.width,
-        frame_count = 1,
-        shift = {0, 0},
-        scale = 0.5,
-      }
+      scale = wagon_layer.scale or 0.5,
     }
   },
 }
@@ -225,19 +197,7 @@ M.railunloader_proxy_animations = {
   west = railunloader_proxy_horizontal,
 }
 
-M.empty_sheet = {
-  filename = "__core__/graphics/add-icon.png",
-  priority = "very-low",
-  width = 1,
-  height = 1,
-}
-
-M.empty_animation = {
-  filename = "__core__/graphics/add-icon.png",
-  priority = "very-low",
-  width = 1,
-  height = 1,
-  frame_count = 0,
-}
+M.empty_sheet = util.empty_sprite()
+M.empty_animation = util.empty_animation()
 
 return M

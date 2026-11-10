@@ -14,6 +14,7 @@ data:extend{
     collision_box = {{-1.8, -1.8}, {1.8, 1.8}},
     selection_box = {{-1.8, -1.8}, {1.8, 1.8}},
     fluid_box = {
+      volume = 100,
       pipe_connections = {},
     },
     energy_usage = "0kW",
@@ -22,8 +23,7 @@ data:extend{
     },
     pumping_speed = 0,
     animations = pictures.railunloader_proxy_animations,
-    circuit_wire_connection_points = circuitconnectors["railloader-placement-proxy"].points,
-    circuit_connector_sprites = circuitconnectors["railloader-placement-proxy"].sprites,
+    circuit_connector = circuitconnectors["railloader-placement-proxy"],
     circuit_wire_max_distance = default_circuit_wire_max_distance + 1.5,
   },
 
@@ -34,7 +34,7 @@ data:extend{
     icon = "__base__/graphics/icons/steel-chest.png",
     icon_size = 32,
     flags = {},
-    collision_mask = {},
+    collision_mask = { layers = {} },
     -- above rails
     render_layer = "floor",
     picture = pictures.railunloader_horizontal,
@@ -45,7 +45,7 @@ data:extend{
     icon = "__base__/graphics/icons/steel-chest.png",
     icon_size = 32,
     flags = {},
-    collision_mask = {},
+    collision_mask = { layers = {} },
     -- above rails
     render_layer = "floor",
     picture = pictures.railunloader_vertical,
@@ -58,8 +58,8 @@ data:extend{
     icon_size = 32,
     flags = {"hide-alt-info"},
     collision_box = {{-1, -1}, {1, 1}},
-    collision_mask = {},
-    stack = true,
+    collision_mask = { layers = {} },
+    bulk = true,
     max_health = 800,
     filter_count = 5,
     energy_per_movement = "4kJ",
@@ -110,14 +110,13 @@ data:extend{
     },
     collision_box = {{-2, -2}, {2, 2}},
     selection_box = {{-2, -2}, {2, 2}},
-    collision_mask = {"item-layer", "object-layer", "water-tile"},
+    collision_mask = { layers = { item = true, object = true, water_tile = true, is_object = true, is_lower_object = true } },
     selection_priority = 255,
     fast_replaceable_group = "railloader",
     inventory_size = settings.startup["railloader-capacity"].value,
     vehicle_impact_sound =  { filename = "__base__/sound/car-metal-impact.ogg", volume = 0.65 },
     picture = pictures.empty_sheet,
-    -- circuit_wire_connection_point = circuit_connector_definitions["chest"].points,
-    -- circuit_connector_sprites = circuit_connector_definitions["chest"].sprites,
+    circuit_connector = circuit_connector_definitions["chest"],
     circuit_wire_max_distance = default_circuit_wire_max_distance
   },
 }

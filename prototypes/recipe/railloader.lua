@@ -24,6 +24,6 @@ data:extend{
     enabled = false,
     energy_required = 1,
     ingredients = Recipe.select_ingredients(possible_ingredients),
-    result = "railloader",
+    results = {{type = "item", name = "railloader", amount = 1}},
   },
 }

@@ -15,7 +15,8 @@ function M.select_ingredients(sets)
     for _, ingredient in ipairs(set) do
       local found = false
       for _, type in ipairs(item_types) do
-        if data.raw[type][ingredient[1]] then
+        local raw_type = data.raw[type]
+        if raw_type and raw_type[ingredient[1]] then
           found = true
           break
         end
@@ -25,7 +26,19 @@ function M.select_ingredients(sets)
       end
     end
     if found_all then
-      return set
+      local normalized = {}
+      for _, ingredient in ipairs(set) do
+        if ingredient.type then
+          table.insert(normalized, ingredient)
+        else
+          table.insert(normalized, {
+            type = "item",
+            name = ingredient[1],
+            amount = ingredient[2]
+          })
+        end
+      end
+      return normalized
     end
   end
 end

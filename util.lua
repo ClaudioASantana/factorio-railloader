@@ -223,4 +223,21 @@ function M.insert_or_spill(entity, stack, inventories)
   stack.clear()
 end
 
+function M.transfer_circuit_connections(source, target)
+  local source_connectors = source.get_wire_connectors(false)
+  if not source_connectors then return end
+  for connector_id, source_connector in pairs(source_connectors) do
+    if source_connector.connections and #source_connector.connections > 0 then
+      local target_connector = target.get_wire_connector(connector_id, true)
+      if target_connector then
+        for _, conn in ipairs(source_connector.connections) do
+          if conn.target and conn.target.valid then
+            target_connector.connect_to(conn.target, false, conn.origin or defines.wire_origin.player)
+          end
+        end
+      end
+    end
+  end
+end
+
 return M

@@ -3,7 +3,7 @@ for _, s in pairs(game.surfaces) do
     if container.name == "railloader-chest" or container.name == "railunloader-chest" then
       for _, rail in ipairs(s.find_entities_filtered{type = "straight-rail", area = container.bounding_box}) do
         rail.destructible = false
-        rail.minable = false
+        rail.minable_flag = false
       end
     end
   end

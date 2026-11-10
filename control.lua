@@ -1,7 +1,6 @@
 local bulk = require "bulk"
 local configchange = require "configchange"
 local delaydestroy = require "delaydestroy"
-local ghostconnections = require "ghostconnections"
 local inserter_config = require "inserterconfig"
 local util = require "util"
 
@@ -12,7 +11,7 @@ local num_inserters = 2
 local allowed_items_setting = settings.global["railloader-allowed-items"].value
 
 local function on_init()
-  global.previous_opened_blueprint_for = {}
+  storage.previous_opened_blueprint_for = {}
   delaydestroy.on_init()
   inserter_config.on_init()
 end
@@ -136,7 +135,7 @@ local function create_entities(proxy, tags, rail_poss)
       force = force,
     }
     rail.destructible = false
-    rail.minable = false
+    rail.minable_flag = false
   end
 
   -- place chest
@@ -151,12 +150,7 @@ local function create_entities(proxy, tags, rail_poss)
   end
 
   -- recreate circuit connections
-  for _, ccd in ipairs(proxy.circuit_connection_definitions) do
-    chest.connect_neighbour(ccd)
-  end
-  for _, ccd in ipairs(ghostconnections.get_connections(proxy)) do
-    chest.connect_neighbour(ccd)
-  end
+  util.transfer_circuit_connections(proxy, chest)
 
   -- place cargo wagon inserters
   local inserter_name =
@@ -302,7 +296,7 @@ local function on_gui_closed(event)
   and event.item.is_blueprint
   and event.item.is_blueprint_setup()
   then
-    global.previous_opened_blueprint_for[event.player_index] = {
+    storage.previous_opened_blueprint_for[event.player_index] = {
       blueprint = event.item,
       tick = event.tick,
     }
@@ -310,7 +304,7 @@ local function on_gui_closed(event)
 end
 
 local function get_blueprint_to_setup(player_index)
-  local opened_blueprint = global.previous_opened_blueprint_for[player_index]
+  local opened_blueprint = storage.previous_opened_blueprint_for[player_index]
   if opened_blueprint and opened_blueprint.tick == game.tick then
     return opened_blueprint.blueprint
   end

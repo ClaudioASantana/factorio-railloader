@@ -139,20 +139,25 @@ end
 local function configure_inserter_control_behavior(inserter)
   local behavior = inserter.get_or_create_control_behavior()
   behavior.circuit_condition = {
-    condition = {
-      comparator = "=",
-      first_signal = {type = "virtual", name = "railloader-disable"},
-    }
+    comparator = "=",
+    first_signal = {type = "virtual", name = "railloader-disable"},
+    constant = 0,
   }
 end
 
 function M.connect_and_configure_inserter_control_behavior(inserter, chest)
-  for _, wire_type in ipairs{"red", "green"} do
-    inserter.connect_neighbour{
-      target_entity = chest,
-      wire = defines.wire_type[wire_type],
-    }
+  local c_ins_red = inserter.get_wire_connector(defines.wire_connector_id.circuit_red, true)
+  local c_chest_red = chest.get_wire_connector(defines.wire_connector_id.circuit_red, true)
+  if c_ins_red and c_chest_red then
+    c_ins_red.connect_to(c_chest_red, false, defines.wire_origin.script)
   end
+
+  local c_ins_green = inserter.get_wire_connector(defines.wire_connector_id.circuit_green, true)
+  local c_chest_green = chest.get_wire_connector(defines.wire_connector_id.circuit_green, true)
+  if c_ins_green and c_chest_green then
+    c_ins_green.connect_to(c_chest_green, false, defines.wire_origin.script)
+  end
+
   configure_inserter_control_behavior(inserter)
 end
 
@@ -173,9 +178,7 @@ local function replace_all_inserters(universal)
         }
         replacement.destructible = false
         replacement.held_stack.swap_stack(e.held_stack)
-        for _, ccd in ipairs(e.circuit_connection_definitions) do
-          replacement.connect_neighbour(ccd)
-        end
+        util.transfer_circuit_connections(e, replacement)
         configure_inserter_control_behavior(replacement)
 
         if not universal then

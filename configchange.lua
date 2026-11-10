@@ -26,9 +26,9 @@ add_migration{
   low = {0,0,0},
   high = {0,3,0},
   task = function()
-    global.unconfigured_loaders = {}
-    local t = global.unconfigured_loaders
-    for _, e in ipairs(global.unconfigured_inserters) do
+    storage.unconfigured_loaders = {}
+    local t = storage.unconfigured_loaders
+    for _, e in ipairs(storage.unconfigured_inserters) do
       if e.valid then
         local loader = e.surface.find_entities_filtered{
           type = "container",
@@ -38,8 +38,8 @@ add_migration{
         t[#t+1] = loader
       end
     end
-    global.unconfigured_inserters = nil
-    global.unconfigured_inserters_iter = nil
+    storage.unconfigured_inserters = nil
+    storage.unconfigured_inserters_iter = nil
     inserter_config.on_load()
   end,
 }
@@ -73,7 +73,7 @@ add_migration{
   low = {0,0,0},
   high = {0,3,7},
   task = function()
-    global.ghosts = {}
+    storage.ghosts = {}
   end,
 }
 
@@ -82,7 +82,7 @@ add_migration{
   low = {0,0,0},
   high = {0,4,0},
   task = function()
-    global.entities_to_destroy = {}
+    storage.entities_to_destroy = {}
   end,
 }
 
@@ -92,13 +92,13 @@ add_migration{
   high = {0,4,0},
   task = function()
     local new = {}
-    for _, v in pairs(global.unconfigured_loaders) do
+    for _, v in pairs(storage.unconfigured_loaders) do
       if v.valid then
         new[v.unit_number] = v
       end
     end
-    global.unconfigured_loaders = new
-    global.unconfigured_loaders_iter = nil
+    storage.unconfigured_loaders = new
+    storage.unconfigured_loaders_iter = nil
   end,
 }
 
@@ -127,10 +127,10 @@ add_migration{
 
           -- fix up any recorded circuit connections
           local new_position_key = util.position_key(g)
-          local connections = global.ghosts[old_position_key]
+          local connections = storage.ghosts[old_position_key]
           if connections then
-            global.ghosts[new_position_key] = connections
-            global.ghosts[old_position_key] = nil
+            storage.ghosts[new_position_key] = connections
+            storage.ghosts[old_position_key] = nil
           end
 
           -- remove any underlying rail ghosts
@@ -328,19 +328,7 @@ add_migration{
         if type then
           for _, inserter_name in ipairs{"rail"..type.."-inserter", "rail"..type.."-universal-inserter"} do
             for _, inserter in ipairs(s.find_entities_filtered{name = inserter_name, position = chest.position}) do
-              for _, wire_type in ipairs{"red", "green"} do
-                inserter.connect_neighbour{
-                  target_entity = chest,
-                  wire = defines.wire_type[wire_type],
-                }
-              end
-              local behavior = inserter.get_or_create_control_behavior()
-              behavior.circuit_condition = {
-                condition = {
-                  comparator = "=",
-                  first_signal = {type = "virtual", name = "railloader-disable"},
-                }
-              }
+              inserter_config.connect_and_configure_inserter_control_behavior(inserter, chest)
             end
           end
         end
@@ -360,19 +348,7 @@ add_migration{
         if type then
           local inserter_name = "rail"..type.."-interface-inserter"
           for _, inserter in ipairs(s.find_entities_filtered{name = inserter_name, position = chest.position}) do
-            for _, wire_type in ipairs{"red", "green"} do
-              inserter.connect_neighbour{
-                target_entity = chest,
-                wire = defines.wire_type[wire_type],
-              }
-            end
-            local behavior = inserter.get_or_create_control_behavior()
-            behavior.circuit_condition = {
-              condition = {
-                comparator = "=",
-                first_signal = {type = "virtual", name = "railloader-disable"},
-              }
-            }
+            inserter_config.connect_and_configure_inserter_control_behavior(inserter, chest)
           end
         end
       end
@@ -385,7 +361,7 @@ add_migration{
   low = {0,0,0},
   high = {1,0,6},
   task = function()
-    global.ghosts = nil
+    storage.ghosts = nil
   end
 }
 
@@ -394,7 +370,7 @@ add_migration{
   low = {0,0,0},
   high = {1,1,0},
   task = function()
-    global.previous_opened_blueprint_for = {}
+    storage.previous_opened_blueprint_for = {}
   end
 }
 

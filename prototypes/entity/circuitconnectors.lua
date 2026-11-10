@@ -18,18 +18,8 @@ local empty_connector_template = {
 
 local chest_definition = { variation = 26, main_offset = {0,-1}, shadow_offset = util.by_pixel(7.5, 2), show_shadow = true }
 
-M["railloader-placement-proxy"] = circuit_connector_definitions.create(
+M["railloader-placement-proxy"] = circuit_connector_definitions.create_vector(
   universal_connector_template,
-  {
-    chest_definition,
-    chest_definition,
-    chest_definition,
-    chest_definition,
-  }
-)
-
-M["railloader-inserter"] = circuit_connector_definitions.create(
-  empty_connector_template,
   {
     chest_definition,
     chest_definition,
