@@ -28,19 +28,29 @@ local function on_configuration_changed(configuration_changed_data)
   end
 end
 
-local function show_error(entity)
-  entity.surface.create_entity{
-    name = "flying-text",
-    position = entity.position,
-    text = {"railloader.invalid-position"},
-  }
+local function show_error(entity, player)
+  local text = {"railloader.invalid-position"}
+  if player and player.valid then
+    player.create_local_flying_text{
+      text = text,
+      position = entity.position,
+    }
+  else
+    rendering.draw_text{
+      text = text,
+      surface = entity.surface,
+      target = entity.position,
+      time_to_live = 120,
+      color = {1, 0.3, 0.3},
+    }
+  end
 end
 
 local function abort_build(event)
   local entity = event.created_entity or event.entity
-  show_error(entity)
-  if event.player_index then
-    local player = game.players[event.player_index]
+  local player = event.player_index and game.players[event.player_index]
+  show_error(entity, player)
+  if player then
     player.mine_entity(entity, true)
   else
     entity.order_deconstruction(entity.force)
@@ -200,7 +210,7 @@ end
 local function on_ghost_built(ghost)
   local rail_pos = rail_positions(ghost)
   if not rail_pos then
-    show_error(ghost)
+    show_error(ghost, ghost.last_user)
     ghost.destroy()
   end
 end

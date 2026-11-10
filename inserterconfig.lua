@@ -21,11 +21,20 @@ local function display_configuration_message(loader, items)
   for i, item in ipairs(items) do
     msg[i+1] = {"item-name." .. item}
   end
-  loader.surface.create_entity{
-    name = "flying-text",
-    position = loader.position,
-    text = msg,
-  }
+  if loader.last_user and loader.last_user.valid then
+    loader.last_user.create_local_flying_text{
+      text = msg,
+      position = loader.position,
+    }
+  else
+    rendering.draw_text{
+      text = msg,
+      surface = loader.surface,
+      target = loader.position,
+      time_to_live = 120,
+      color = {1, 1, 1},
+    }
+  end
 end
 
 local function inserter_configuration_changes(inserter, items)
