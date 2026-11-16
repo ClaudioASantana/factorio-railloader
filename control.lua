@@ -106,7 +106,7 @@ local function rail_positions(proxy)
         util.moveposition(position, {x = 0, y =  1}),
       }
     end
-  else
+  elseif direction == defines.direction.east or direction == defines.direction.west then
     if position.y % 2 ~= 1 then
       return nil
     end
@@ -122,6 +122,8 @@ local function rail_positions(proxy)
         util.moveposition(position, {x =  1, y = 0}),
       }
     end
+  else
+    return nil
   end
 end
 
@@ -129,9 +131,8 @@ local function create_entities(proxy, tags, rail_poss)
   local type = util.railloader_type(proxy.name)
   local surface = proxy.surface
   local direction = proxy.direction
-  if direction >= 4 then
-    direction = direction - 4
-  end
+  local is_horizontal = (direction == defines.direction.east or direction == defines.direction.west)
+  local rail_direction = is_horizontal and defines.direction.east or defines.direction.north
   local position = proxy.position
   local force = proxy.force
   local last_user = proxy.last_user
@@ -141,7 +142,7 @@ local function create_entities(proxy, tags, rail_poss)
     local rail = surface.create_entity{
       name = "railloader-rail",
       position = rail_position,
-      direction = direction,
+      direction = rail_direction,
       force = force,
     }
     rail.destructible = false
@@ -165,9 +166,10 @@ local function create_entities(proxy, tags, rail_poss)
   -- place cargo wagon inserters
   local inserter_name =
     "rail" .. type .. (allowed_items_setting == "any" and "-universal" or "") .. "-inserter"
+  local base_inserter_direction = is_horizontal and defines.direction.east or defines.direction.north
   for i=1,num_inserters do
     -- alternate direction to support half-size wagons sticking out both sides of the (un)loader
-    local inserter_direction = (direction + (i-1) * 4) % 8
+    local inserter_direction = (base_inserter_direction + (i-1) * 8) % 16
     local inserter = surface.create_entity{
       name = inserter_name,
       position = position,
@@ -181,10 +183,9 @@ local function create_entities(proxy, tags, rail_poss)
   inserter_config.configure_or_register_loader(chest)
 
   -- place structure
-  local structure_name = "rail" .. type .. "-structure-vertical"
-  if direction == defines.direction.east or direction == defines.direction.west then
-    structure_name = "rail" .. type .. "-structure-horizontal"
-  end
+  local structure_name = is_horizontal
+    and ("rail" .. type .. "-structure-horizontal")
+    or ("rail" .. type .. "-structure-vertical")
   local placed = surface.create_entity{
     name = structure_name,
     position = position,

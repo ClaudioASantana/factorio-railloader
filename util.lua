@@ -45,17 +45,11 @@ function M.is_empty_box(box)
 end
 
 function M.opposite_direction(direction)
-  if direction >= 4 then
-    return direction - 4
-  end
-  return direction + 4
+  return (direction + 8) % 16
 end
 
 function M.orthogonal_direction(direction)
-  if direction < 6 then
-    return direction + 2
-  end
-  return 0
+  return (direction + 4) % 16
 end
 
 function M.position_key(entity)
@@ -171,7 +165,8 @@ end
 
 function M.find_chests_from_railloader(loader)
   local position = loader.position
-  local is_horiz = M.loader_direction(loader) == defines.direction.east
+  local dir = M.loader_direction(loader)
+  local is_horiz = (dir == defines.direction.east or dir == defines.direction.west)
   local area = {
     left_top = {
       x = position.x - (is_horiz and 2.5 or 1.5),

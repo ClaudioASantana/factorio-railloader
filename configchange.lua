@@ -103,7 +103,7 @@ add_migration{
 }
 
 local function update_proxy_direction(entity)
-  local is_ns = entity.direction == defines.direction.east or defines.direction.west
+  local is_ns = (entity.direction == defines.direction.east or entity.direction == defines.direction.west)
   entity.direction = is_ns and defines.direction.east or defines.direction.north
 end
 

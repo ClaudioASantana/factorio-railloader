@@ -108,6 +108,24 @@ No Factorio 2.0, a entidade de protótipo `flying-text` foi removida da engine.
   - Fallback para `rendering.draw_text{ ... }` caso a ação tenha sido gerada por robôs/scripts sem jogador direto.
   - Atualizado em [control.lua](control.lua) e [inserterconfig.lua](inserterconfig.lua).
 
+### 3.5 Adaptação para o Sistema de 16 Direções (`defines.direction`)
+
+No Factorio 2.0, o enum `defines.direction` foi expandido de 8 para 16 direções (com `north = 0`, `east = 4`, `south = 8`, `west = 12`).
+
+- **Problema encontrado:**
+  - O código legado do Factorio 1.1 reduzia a direção do proxy com `if direction >= 4 then direction = direction - 4 end` assumindo 8 direções (onde `east = 2`, `south = 4`, `west = 6`).
+  - No Factorio 2.0, ao colocar o carregador na horizontal (`direction = east = 4`), `direction` era subtraído para `0` (`north`).
+  - Como consequência, ao colocar em trilhos horizontais:
+    1. Os trilhos internos (`railloader-rail`) eram criados com direção vertical (`direction = 0`), ficando desconectados dos trilhos horizontais externos e quebrando o caminho dos trens / invalidando a estação.
+    2. A estrutura colocada era `railloader-structure-vertical` em vez da horizontal.
+    3. Os inserters internos recebiam orientações incorretas baseadas em módulo `% 8`.
+- **Solução implementada:**
+  - Em [control.lua](control.lua), verificação explícita de `is_horizontal = (direction == defines.direction.east or direction == defines.direction.west)`.
+  - Trilhos internos colocados com `defines.direction.east` (horizontal) ou `defines.direction.north` (vertical).
+  - Estrutura selecionada com base em `is_horizontal`.
+  - Inserters internos rotacionados com base em 16 direções: `(base_direction + (i-1) * 8) % 16`.
+  - Em [util.lua](util.lua), funções `opposite_direction` (`(dir + 8) % 16`), `orthogonal_direction` (`(dir + 4) % 16`) e `find_chests_from_railloader` adaptadas para o sistema de 16 direções.
+
 ---
 
 ## 4. Ambiente de Desenvolvimento e Validação
