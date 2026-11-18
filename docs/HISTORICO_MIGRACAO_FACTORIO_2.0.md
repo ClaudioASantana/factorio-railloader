@@ -126,6 +126,21 @@ No Factorio 2.0, o enum `defines.direction` foi expandido de 8 para 16 direçõe
   - Inserters internos rotacionados com base em 16 direções: `(base_direction + (i-1) * 8) % 16`.
   - Em [util.lua](util.lua), funções `opposite_direction` (`(dir + 8) % 16`), `orthogonal_direction` (`(dir + 4) % 16`) e `find_chests_from_railloader` adaptadas para o sistema de 16 direções.
 
+### 3.6 Tratamento de Trilhos Existentes e Fantasmas (Construção por Robôs e Blueprints)
+
+Ao colocar o carregador via robôs de construção ou blueprints:
+
+- **Problema encontrado:**
+  - O evento `on_robot_built_entity` tentava criar os trilhos internos (`railloader-rail`) chamando `surface.create_entity` diretamente sobre posições onde já existiam trilhos construídos ou fantasmas (`entity-ghost`) de trilhos colocados pela blueprint ou trilhos pré-existentes.
+  - A engine do Factorio retornava `nil` para `surface.create_entity`, ocasionando o crash:
+    `__railloader__/control.lua:148: attempt to index local 'rail' (a nil value)`.
+- **Solução implementada:**
+  - Detecção e remoção preventiva de fantasmas de trilhos retos na área do carregador antes da criação dos trilhos reais.
+  - Verificação de trilhos retos pré-existentes (`straight-rail` e `legacy-straight-rail`):
+    - Se já existir trilho na mesma direção, ele é reaproveitado e protegido diretamente.
+    - Se a direção for conflitante, tenta destruí-lo antes de criar o `railloader-rail` (se não puder destruir, por exemplo devido a trem em cima, reaproveita sem travar).
+  - Verificações de segurança (`if rail and rail.valid`, `if chest`, `if inserter`, `if placed`) para evitar qualquer erro de indexação de valor nulo no Factorio.
+
 ---
 
 ## 4. Ambiente de Desenvolvimento e Validação

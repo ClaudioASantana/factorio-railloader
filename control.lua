@@ -69,11 +69,13 @@ local function sync_interface_inserters(loader)
         position = loader.position,
         force = loader.force,
       }
-      inserter.destructible = false
-      inserter.pickup_position = type == "loader" and interface_chest.position or main_chest_position
-      inserter.drop_position = type == "unloader" and interface_chest.position or main_chest_position
-      inserter.direction = inserter.direction
-      inserter_config.connect_and_configure_inserter_control_behavior(inserter, loader)
+      if inserter then
+        inserter.destructible = false
+        inserter.pickup_position = type == "loader" and interface_chest.position or main_chest_position
+        inserter.drop_position = type == "unloader" and interface_chest.position or main_chest_position
+        inserter.direction = inserter.direction
+        inserter_config.connect_and_configure_inserter_control_behavior(inserter, loader)
+      end
     end
   end
 end
@@ -139,14 +141,57 @@ local function create_entities(proxy, tags, rail_poss)
 
   -- place rails
   for _, rail_position in ipairs(rail_poss) do
-    local rail = surface.create_entity{
-      name = "railloader-rail",
-      position = rail_position,
-      direction = rail_direction,
-      force = force,
+    -- Remove any rail ghosts occupying this position (e.g. from blueprints)
+    local ghosts = surface.find_entities_filtered{
+      area = util.box_centered_at(rail_position, 0.5),
+      name = "entity-ghost",
     }
-    rail.destructible = false
-    rail.minable_flag = false
+    for _, ghost in ipairs(ghosts) do
+      if ghost.valid and (ghost.ghost_type == "straight-rail" or ghost.ghost_type == "legacy-straight-rail") then
+        ghost.destroy()
+      end
+    end
+
+    -- Check if a straight rail already exists at this position
+    local existing_rails = surface.find_entities_filtered{
+      area = util.box_centered_at(rail_position, 0.5),
+      type = {"straight-rail", "legacy-straight-rail"},
+    }
+
+    local rail
+    for _, r in ipairs(existing_rails) do
+      if r.valid and r.direction == rail_direction then
+        rail = r
+        break
+      end
+    end
+
+    if not rail then
+      local destroyed_all = true
+      for _, r in ipairs(existing_rails) do
+        if r.valid then
+          if not r.destroy() then
+            destroyed_all = false
+            rail = r
+            break
+          end
+        end
+      end
+
+      if destroyed_all then
+        rail = surface.create_entity{
+          name = "railloader-rail",
+          position = rail_position,
+          direction = rail_direction,
+          force = force,
+        }
+      end
+    end
+
+    if rail and rail.valid then
+      rail.destructible = false
+      rail.minable_flag = false
+    end
   end
 
   -- place chest
@@ -155,46 +200,52 @@ local function create_entities(proxy, tags, rail_poss)
     position = position,
     force = force,
   }
-  chest.last_user = last_user
-  if tags and tags.bar then
-    chest.get_inventory(defines.inventory.chest).set_bar(tags.bar)
-  end
+  if chest then
+    chest.last_user = last_user
+    if tags and tags.bar then
+      chest.get_inventory(defines.inventory.chest).set_bar(tags.bar)
+    end
 
-  -- recreate circuit connections
-  util.transfer_circuit_connections(proxy, chest)
+    -- recreate circuit connections
+    util.transfer_circuit_connections(proxy, chest)
 
-  -- place cargo wagon inserters
-  local inserter_name =
-    "rail" .. type .. (allowed_items_setting == "any" and "-universal" or "") .. "-inserter"
-  local base_inserter_direction = is_horizontal and defines.direction.east or defines.direction.north
-  for i=1,num_inserters do
-    -- alternate direction to support half-size wagons sticking out both sides of the (un)loader
-    local inserter_direction = (base_inserter_direction + (i-1) * 8) % 16
-    local inserter = surface.create_entity{
-      name = inserter_name,
+    -- place cargo wagon inserters
+    local inserter_name =
+      "rail" .. type .. (allowed_items_setting == "any" and "-universal" or "") .. "-inserter"
+    local base_inserter_direction = is_horizontal and defines.direction.east or defines.direction.north
+    for i=1,num_inserters do
+      -- alternate direction to support half-size wagons sticking out both sides of the (un)loader
+      local inserter_direction = (base_inserter_direction + (i-1) * 8) % 16
+      local inserter = surface.create_entity{
+        name = inserter_name,
+        position = position,
+        direction = inserter_direction,
+        force = force,
+      }
+      if inserter then
+        inserter.destructible = false
+        inserter_config.connect_and_configure_inserter_control_behavior(inserter, chest)
+      end
+    end
+
+    inserter_config.configure_or_register_loader(chest)
+
+    -- place structure
+    local structure_name = is_horizontal
+      and ("rail" .. type .. "-structure-horizontal")
+      or ("rail" .. type .. "-structure-vertical")
+    local placed = surface.create_entity{
+      name = structure_name,
       position = position,
-      direction = inserter_direction,
       force = force,
     }
-    inserter.destructible = false
-    inserter_config.connect_and_configure_inserter_control_behavior(inserter, chest)
+    if placed then
+      placed.destructible = false
+    end
+
+    -- place interface inserters for pre-existing chests
+    sync_interface_inserters(chest)
   end
-
-  inserter_config.configure_or_register_loader(chest)
-
-  -- place structure
-  local structure_name = is_horizontal
-    and ("rail" .. type .. "-structure-horizontal")
-    or ("rail" .. type .. "-structure-vertical")
-  local placed = surface.create_entity{
-    name = structure_name,
-    position = position,
-    force = force,
-  }
-  placed.destructible = false
-
-  -- place interface inserters for pre-existing chests
-  sync_interface_inserters(chest)
 end
 
 local function on_railloader_proxy_built(event)
@@ -249,7 +300,7 @@ local function on_railloader_mined(entity, buffer)
       ent.destroy()
     elseif string.find(ent.name, "^railu?n?loader%-structure") then
       ent.destroy()
-    elseif ent.type == "straight-rail" then
+    elseif ent.type == "straight-rail" or ent.type == "legacy-straight-rail" then
       local success = ent.destroy()
       if not success then
         delaydestroy.register_to_destroy(ent)
@@ -278,7 +329,9 @@ local function on_post_entity_died(event)
         direction = died_direction,
         position = ghost.position,
       }
-      new_ghost.last_user = ghost.last_user
+      if new_ghost then
+        new_ghost.last_user = ghost.last_user
+      end
       ghost.destroy()
     end
   end
@@ -353,7 +406,7 @@ local function on_blueprint(event)
       if not chest_entity then goto continue end
 
       local rail = player.surface.find_entities_filtered{
-        type = "straight-rail",
+        type = {"straight-rail", "legacy-straight-rail"},
         area = chest_entity.bounding_box,
       }[1]
       if not rail then goto continue end
